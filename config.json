@@ -1,0 +1,10 @@
+{
+	"dev": {
+		"port":"9001",
+		"session_secret": "kOSa;8*zlqmx@vc*(cx"
+	},
+	"prod": {
+		"port":"9000",
+		"session_secret": "ck2&1df6SADm_)fJJds"
+	}
+}

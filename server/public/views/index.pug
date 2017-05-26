@@ -1,0 +1,224 @@
+//-
+  zelibobla.ru
+  index page (entry point)
+
+  @author Anton Zelenski zelibobla@gmail.com
+  @copyright zelibobla.ru
+
+extends layout
+
+block content
+  h1 Filuet delivery module
+  h3 Introduction
+  p Filuet delivery module (FDM) is the shortest way to present different delivery options on your webstore on cart sumbission. FDM is just a javascript code which can be attached to your site and fired on delivery chosing request. FDM is completely autonomous, it does not require you to attach any more libraries and never interfere with any libraries in your webstore site. This instruction describes the way to attach FDM, pass data and grab results. In appendix the way to protect results from malforming is described.
+  h3 Attaching FDM
+  p Just add this string in html code of your webstore.
+  pre
+    = '<script src="http://deliverywidget.azurewebsites.net/seed.js"></script>'
+  h3 Preparing data for FDM
+  p To calculate delivery FDM must know order conditions data. You should pass it to FDM on initialize. Data is a JSON object with self explaining fields. All metrics in meters, all prices in russian roubles, weight in kilograms:
+  textarea.form-control#entry(style="height:400px")
+    | {
+    |   "merchant_key": "babyworld",
+    |   "city": "Санкт-Петербург",
+    |   "orderItems": [
+    |     {
+    |         "id": 81325,
+    |         "length": 0.2,
+    |         "width": 0.1,
+    |         "height": 0.4,
+    |         "weight": 0.5,
+    |         "price": 8920,
+    |         "VAT": 1601,
+    |         "priceWithVAT": 10521
+    |     }
+    |   ]
+    | }
+  p
+    ul(style="list-style-type:none")
+      li
+        code merchant_key (required)
+        |  – string you obtain from FDM upon registration. This is the way you identify yourself.
+      li
+        code.gray customer.city.name (optional)
+        |  – string with name of the city your customer lives in.
+      li
+        code.gray order.items (optional)
+        |  – array of objects each of which represents buying product.
+        ul(style="list-style-type:none")
+          li
+            code.gray id (optional)
+            |  – string with unique identified of your product
+          li
+            code.gray length (optional), meters
+            |  – number representing length of product
+          li
+            code.gray width (optional), meters
+            |  – number representing width of product
+          li
+            code.gray height (optional), meters
+            |  – number representing height of product
+          li
+            code.gray weight (optional), kilograms
+            |  – number representing weight of product
+          li
+            code.gray VAT (optional), roubles
+            |  – number representing VAT
+          li
+            code.gray prictWithVAT (optional), roubles
+            |  – number representing price of product including VAT
+
+  h3 Launching FDM
+  p Once FDM is attached to your html you need to launch it when customer wants to chose delivery option. Assume in your cart you have a button with 
+    code
+      = 'id="FDM_launcher"'
+    | like this:
+  pre
+    = '<button type="button" id="FDM_launcher">Chose/change delivery option</button>'
+  
+  p Then just handle the button click event this way: 
+  pre
+    = 'document.getElementById( "FDM_launcher" ).onclick = () => FDM.init( data )'
+
+  p Click it to launch FDM:
+  p
+    button.btn.btn-primary#FDM_launcher(onclick="window.runShippingModule( 'entry' )") Chose/change delivery option
+
+  h3 Result point
+  p If you didn't press button above yet, please do it. Choose any delivery option. After sbumittion you will be returned here and further reading will be easy to understand:
+  p Once FDM modal is closed FDM.onComplete fires in your html code. All the data passed to FDM on start added by calculation results will be returned in JSON object as argument:
+  pre#result Please press «Choose delivery option» button above to see FDM result here.
+  p After modal window was closed the upper block contains FDM response object. It looks much like the object you passed into FDM, thus have some new fields.
+  ul(style="list-style-type:none")
+    li
+      code.gray carrier
+      |  – string key of carrier chosen by customer
+    li
+      code.gray shipToAddress
+      |  – string of full address to ship to
+    li
+      code.gray zipcode
+      |  – string postal code
+    li
+      code.gray country
+      |  – string country name
+    li
+      code.gray region
+      |  – string country region name
+    li
+      code.gray city
+      |  – string city name
+    li
+      code.gray address1
+      |  – string with street name
+    li
+      code.gray address2
+      |  – string of merged house, building, liter and flat
+    li
+      code.gray address3
+      |  – string of house section, intercom, floor number and any additional address data
+    li
+      code.gray shipCost
+      |  – integer cost of shipping
+    li
+      code.gray shipTerm
+      |  – array of two integers representing shipping duration [ min duration in days, max duration in days ]
+    li
+      code.gray postamatId
+      |  – integer id of postamat to deliver to (if pickpoint carrier chosen)
+
+  p Notice that FDM can be called as many times as user whishes and if you pass on entry point the object you've just got from FDM all the fields of form will be filled automatically
+  p Imagine you're user who would like to change the decision about just chosen delivery option. Scroll up and cliсk «Chose/change delivery option» button again.
+  
+  h3 Securing calculations result
+  p In order to protect the results from malforming FDM suggests two simple ways to check calculation validity.
+  h4 Securing method 1. Checking results on FDM side
+  p Once you received FDM result, just make the request from your server like:
+  pre
+    = 'curl -sv http://deliverymodule.azurewebsites.net/check -X POST --data \'{"carrier":{"name":"spsr_standard","data":{"city":{"id":"893|0","name":"Санкт-Петербург (Ленинградская обл.)","region":{"name":"Ленинградская обл.","id":"35|0"},"country_id":"209|0"}},"tariff":{"tariff":"Услуги по доставке \"Пеликан-стандарт\"","delivery_price":566.4,"additions_price":0,"insurance_price":0,"worth":0,"delivery_duration":[1,2],"key":"standard"}},"hash":"30ec6b6b6b1acb5587b0a79dfcdf7a57d04e1460"}\' -H \'Content-type: application/json\''
+  p As you already noted this is simple POST request with stringified JSON object representing exactly the result returned by FDM. Via hash FDM retrieves parameters by which delivery price was calculated, so any sort of result deviation will be rejected.
+  p For valid calculation you receive:
+  pre
+    | < HTTP/1.1 200 OK
+    | < X-Powered-By: Express
+    | < Vary: X-HTTP-Method-Override
+    | < Access-Control-Allow-Origin: *
+    | < Content-Type: text/html; charset=utf-8
+    | < Content-Length: 15
+    | < ETag: W/"f-Q8mqKAw36/Sv5e+cmJHg6A"
+    | < Date: Fri, 17 Mar 2017 20:21:07 GMT
+    | < Connection: keep-alive
+    | < 
+    | Result is valid
+
+  p For invalid calculation you receive:
+  pre
+    | < HTTP/1.1 200 OK
+    | < X-Powered-By: Express
+    | < Vary: X-HTTP-Method-Override
+    | < Access-Control-Allow-Origin: *
+    | < Content-Type: text/html; charset=utf-8
+    | < Content-Length: 32
+    | < ETag: W/"20-hsLaDhOEIBUqDnmM3VlMqQ"
+    | < Date: Fri, 17 Mar 2017 20:25:26 GMT
+    | < Connection: keep-alive
+    | < 
+    | Result object has been malformed
+  
+  p Note that FDM keeps calculation results only for 2 hours. For expired calculation you receive:
+  pre
+    | < HTTP/1.1 200 OK
+    | < X-Powered-By: Express
+    | < Vary: X-HTTP-Method-Override
+    | < Access-Control-Allow-Origin: *
+    | < Content-Type: text/html; charset=utf-8
+    | < Content-Length: 32
+    | < ETag: W/"20-vnfjOwylqKeFwStrhFVImw"
+    | < Date: Fri, 17 Mar 2017 20:27:59 GMT
+    | < Connection: keep-alive
+    | < 
+    | No result found by provided hash
+
+  h4 Securing method 2. Checking results on merchant side
+  p Once you received FDM result, just make the request from your server like:
+  pre
+    = 'curl -sv http://deliverymodule.azurewebsites.net/calc/30ec6b6b6b1acb5587b0a79dfcdf7a57d04e1460'
+  p The value after /calc/ – is a hash you received after calculation.
+  p Server will respond for valid hash:
+  pre
+    | < HTTP/1.1 200 OK
+    | < X-Powered-By: Express
+    | < Vary: X-HTTP-Method-Override
+    | < Access-Control-Allow-Origin: *
+    | < Content-Type: text/html; charset=utf-8
+    | < Content-Length: 15
+    | < ETag: W/"f-Q8mqKAw36/Sv5e+cmJHg6A"
+    | < Date: Fri, 17 Mar 2017 20:21:07 GMT
+    | < Connection: keep-alive
+    | < 
+    | Result is valid
+
+  p For invalid hash you receive:
+  pre
+    | < HTTP/1.1 404 Not Found
+    | < X-Powered-By: Express
+    | < Access-Control-Allow-Origin: *
+    | < Content-Type: text/html; charset=utf-8
+    | < Content-Length: 37
+    | < ETag: W/"25-uXCJvVP29hENv8OBk3j09Q"
+    | < Vary: Accept-Encoding
+    | < Date: Fri, 26 May 2017 06:01:40 GMT
+    | < Connection: keep-alive
+    | < 
+    | No calculation found by provided hash
+  
+  p Please be warned: For security reason validity check request must by executed only from your server, not browser.
+    
+  h3 Support
+  p Shall you have any questions, please address it here: 
+  a(href="mailto:support@filuet.com") support@filuet.com
+  br
+  br
+  br
+  br
+  br
